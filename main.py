@@ -8,6 +8,8 @@ api = Api(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 db=SQLAlchemy(app)
 
+#  DB Model to define the column of the Db.
+
 class VideoModel(db.Model):
     id=db.Column(db.Integer, primary_key=True)
     name=db.Column(db.String(100), nullable=False)
@@ -45,6 +47,8 @@ videos={}
 
 # ==========================================================================================
 
+# Custom Abort.
+
 def abort_if_videoid_doesnt_exist(video_id):
     if video_id not in videos:
         abort(404, message ="Video Id is Invalid...")
@@ -55,6 +59,8 @@ def abort_if_videoid_already_exist(video_id):
         abort(409, message ="Video Id already Exists...")
 
 # ==========================================================================================
+
+# Using Dictionary as Db.
 
 class Video2(Resource):
     def get(self,video_id):
@@ -83,6 +89,8 @@ api.add_resource(Video2,'/video2/<int:video_id>')
 
 # ==========================================================================================
 
+# Using Sqlite as DB.
+
 # This helps in json serealization of the output. Ie. it defines how the output or return is to be shown.
 resource_fields = {
 	'id': fields.Integer,
@@ -92,6 +100,7 @@ resource_fields = {
 }
 
 class Video(Resource):
+    # @marshal_with is a decorator for custom type of output in format "resource_fields".
         @marshal_with(resource_fields)
         def get(self, video_id):
             result = VideoModel.query.filter_by(id=video_id).first()
@@ -109,6 +118,7 @@ class Video(Resource):
             db.session.add(video)
             db.session.commit()
             return video, 201
+
         @marshal_with(resource_fields)
         def patch(self,video_id):
             args= video_update_args.parse_args()
@@ -126,9 +136,12 @@ class Video(Resource):
             return res
 
         def delete(self,video_id):
-            abort_if_videoid_doesnt_exist(video_id)
-            del videos[video_id]
-            return '',204
+            res = VideoModel.query.filter_by(id=video_id).first()
+            if not res:
+                abort(404, "Video Doesnt exists...")
+            VideoModel.query.filter_by(id=video_id).delete()
+            db.session.commit()
+            return {"Data":"Deleted Successfully"} ,204
 
 api.add_resource(Video,'/video/<int:video_id>')
 
